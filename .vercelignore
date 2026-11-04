@@ -1,0 +1,12 @@
+backend/
+supabase/
+.venv/
+work/
+outputs/
+evaluation/
+deploy/
+.env
+.env.*
+!.env.example
+**/__pycache__/
+.git/

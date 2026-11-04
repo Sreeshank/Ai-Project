@@ -1,0 +1,32 @@
+# Demo uses the free tier; it sleeps when idle. No paid resources are created.
+services:
+  - type: web
+    name: campus-compass-api
+    runtime: docker
+    plan: free
+    repo: https://github.com/Sreeshank/Ai-Project
+    branch: main
+    dockerfilePath: ./deploy/Dockerfile.backend
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - key: DOCUMENT_BACKEND
+        value: postgres
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GEMINI_FALLBACK_MODELS
+        value: gemini-3.6-flash
+      - key: EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: APP_ORIGIN
+        sync: false
+      - key: RATE_LIMIT_ENABLED
+        value: "1"

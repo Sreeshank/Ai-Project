@@ -51,3 +51,16 @@ Responses include an `X-Request-ID`. Errors log a request ID, path, status and/o
 Run the Python suite and `npm run build`, then check the actual deployment domain: public document listing/downloads, staff rejection without a session and rejection of the old token, provider checks, indexing state, replacement approval/archival, and a sample question. Test staff and administrator permissions independently, disabling access, sign-out, expiry/refresh and rejection of cross-site mutations. Create confirmed Auth identities through Supabase, bootstrap only the first administrator, and grant subsequent roles in the staff workspace. See the root README for exact commands.
 
 References: [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output), [Caddy reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), [Supabase Auth users](https://supabase.com/docs/guides/auth/users), [Supabase server-side sessions](https://supabase.com/docs/guides/auth/server-side/advanced-guide), [Caddy log filters](https://caddyserver.com/docs/caddyfile/directives/log#filter).
+
+
+## Vercel frontend with a separate Render backend
+
+`render.yaml` describes a Docker web service using the existing backend image. Its free tier is for a demo: it sleeps when idle, the index worker pauses while asleep, and OCR cache files are lost on restart. Source files, roles and durable indexing jobs remain in Supabase. Paid always-on hosting requires a separate decision; this blueprint does not select it.
+
+Supply the backend environment values privately on Render. Reuse the existing Supabase database and confirmed staff identities; do not import the old SQLite database. Set `APP_ORIGIN` to the exact Vercel frontend HTTPS URL. The backend uses port 8000, which Render detects. The image runs as the nonroot campus user.
+
+Deploy the frontend in Vercel as a Next.js project with `BACKEND_URL` set to the actual Render service HTTPS URL at build time. `.vercelignore` excludes Python sources, local credentials and document data from frontend uploads. Do not place model/database secrets in the frontend project. Staff cookie requests proxy through `/api`; the browser uses the Vercel hostname. A different preview URL requires updating backend `APP_ORIGIN` before staff mutations will work. Keep the preview URL stable for a demo or coordinate the origin on redeploy.
+
+Check the Render build and health, Vercel build status, sign-in, one source download, one grounded answer and indexing. The free backend's first request can be slow while it wakes; OCR may require more memory than the free instance provides.
+
+References: https://render.com/docs/blueprint-spec and https://render.com/docs/free.
