@@ -1,0 +1,15 @@
+node_modules/
+.next/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.local
+backend/.env
+backend/data/
+work/
+outputs/
+next-env.d.ts
+*.tsbuildinfo
+
+evaluation/reports/

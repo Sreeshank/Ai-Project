@@ -1,0 +1,13 @@
+FROM python:3.13-slim-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 libgomp1 && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY backend/requirements.txt ./requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+RUN useradd --create-home campus
+COPY --chown=campus:campus backend ./backend
+COPY --chown=campus:campus supabase ./supabase
+RUN mkdir -p /app/work /app/backend/data && chown -R campus:campus /app/work /app/backend/data
+USER campus
+ENV PYTHONUNBUFFERED=1 DOCUMENT_BACKEND=postgres
+EXPOSE 8000
+CMD ["python", "-m", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

@@ -1,0 +1,46 @@
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+    env_file: ../backend/.env
+    environment:
+      DOCUMENT_BACKEND: postgres
+      APP_ORIGIN: https://${CAMPUS_DOMAIN:?Set CAMPUS_DOMAIN to your domain}
+      RATE_LIMIT_ENABLED: "1"
+    restart: unless-stopped
+    volumes:
+      - ocr-cache:/app/backend/data
+      - backups:/app/work/backups
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=15)"]
+      interval: 30s
+      timeout: 20s
+      start_period: 30s
+      retries: 3
+  frontend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+  gateway:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      CAMPUS_DOMAIN: ${CAMPUS_DOMAIN:?Set CAMPUS_DOMAIN to your domain}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [frontend, backend]
+volumes:
+  ocr-cache:
+  backups:
+  caddy-data:
+  caddy-config:

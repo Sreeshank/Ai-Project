@@ -1,0 +1,11 @@
+# Evaluation changes
+
+- Suite version 1 is preserved as `campus_questions.v1.json`, with its original hash. Existing baseline reports remain unchanged.
+- Suite version 2 accepts the equivalent digit wording “2 to 5” for the Honors notice's “2–5” range. The expected endpoints remain 2 and 5; “2 to 6” is rejected by a regression test. No source text or expected policy value changed.
+- Scorer version 3 recognizes plural-source abstention wording such as “sources do not contain/specify/state”. The original responses correctly declined to supply missing information and set `fallback=true`; the earlier regular expression missed those forms. Abstention still requires the insufficient-evidence flag and an absence of provider failures.
+- The assistant now normalizes grouped numeric citations such as `[1, 2]` to `[1] [2]` and moves an explicit sample/demonstration annotation outside the bracket. Every ID is still checked against supplied evidence. Unknown IDs and malformed ranges/annotations are rejected. Regression tests include `[1, 99]`, `[99 (SAMPLE)]`, `[1-99]` and `[1 arbitrary note]`.
+- `release-evaluation` is the first successful-provider run, recorded before these corrections. `release-final` uses the corrected suite and scorer and the updated citation parser. Reports never overwrite one another.
+
+For re-scoring a version-1 baseline, explicitly pass `--suite evaluation/campus_questions.v1.json`. Re-scoring requires the matching question-suite hash. A new live run defaults to suite version 2.
+
+- The first corrected full run (`release-final`) passed 29/30. Its ID-replacement-fee answer correctly said the amount was unspecified but incorrectly set `supported=true`. The prompt now defines support in terms of fulfilling the original requested information, rather than merely sourcing a referral. A live targeted check confirmed `supported=false` for the unspecified fee while the explicit yes/no unpublished-exam-date question remains `supported=true`. The fresh complete run `acceptance-final` passed 30/30: actual hybrid retrieval on every request, evidence/fact/citation checks on all 24 answerable cases and all six abstentions. Earlier runs remain unchanged. Human staff review is still pending.
