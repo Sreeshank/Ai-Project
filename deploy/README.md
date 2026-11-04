@@ -53,14 +53,27 @@ Run the Python suite and `npm run build`, then check the actual deployment domai
 References: [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output), [Caddy reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), [Supabase Auth users](https://supabase.com/docs/guides/auth/users), [Supabase server-side sessions](https://supabase.com/docs/guides/auth/server-side/advanced-guide), [Caddy log filters](https://caddyserver.com/docs/caddyfile/directives/log#filter).
 
 
-## Vercel frontend with a separate Render backend
+## Render frontend and backend (selected deployment)
 
-`render.yaml` describes a Docker web service using the existing backend image. Its free tier is for a demo: it sleeps when idle, the index worker pauses while asleep, and OCR cache files are lost on restart. Source files, roles and durable indexing jobs remain in Supabase. Paid always-on hosting requires a separate decision; this blueprint does not select it.
+The root `render.yaml` creates two web services from the same GitHub repository:
 
-Supply the backend environment values privately on Render. Reuse the existing Supabase database and confirmed staff identities; do not import the old SQLite database. Set `APP_ORIGIN` to the exact Vercel frontend HTTPS URL. The backend uses port 8000, which Render detects. The image runs as the nonroot campus user.
+| Service | Runtime | Build / start |
+| --- | --- | --- |
+| `campus-compass-web` | Node.js 22 | `npm ci --include=dev && npm run build`; Next.js binds `0.0.0.0:$PORT` |
+| `campus-compass-api` | Docker | `deploy/Dockerfile.backend`; FastAPI binds port 8000 |
 
-Deploy the frontend in Vercel as a Next.js project with `BACKEND_URL` set to the actual Render service HTTPS URL at build time. `.vercelignore` excludes Python sources, local credentials and document data from frontend uploads. Do not place model/database secrets in the frontend project. Staff cookie requests proxy through `/api`; the browser uses the Vercel hostname. A different preview URL requires updating backend `APP_ORIGIN` before staff mutations will work. Keep the preview URL stable for a demo or coordinate the origin on redeploy.
+The frontend's `BACKEND_URL` references the backend's Render `RENDER_EXTERNAL_URL`. Next.js bakes this into its `/api` rewrite during the build. Public HTTPS is used because Render free services do not provide private-network ingress. Render supplies TLS; the Compose/Caddy deployment is not used for this setup.
 
-Check the Render build and health, Vercel build status, sign-in, one source download, one grounded answer and indexing. The free backend's first request can be slow while it wakes; OCR may require more memory than the free instance provides.
+Create a Blueprint in Render from `https://github.com/Sreeshank/Ai-Project`, using `render.yaml`. Supply the backend's `DATABASE_URL`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` and `APP_ORIGIN` privately when prompted. For CLI-assisted deployment, store a Render API key as `RENDER_API_KEY` in local `backend/.env`; it must never be committed or sent to either application's runtime environment.
 
-References: https://render.com/docs/blueprint-spec and https://render.com/docs/free.
+Set backend `APP_ORIGIN` to the **actual frontend Render HTTPS URL**, not the backend address. You may initially use `https://setup.invalid` to keep login blocked while Render allocates the URLs; update it before testing sign-in. This is a manual value to avoid a circular dependency between the services. The frontend requires no database, model or Auth secrets. Cookies remain on the frontend hostname through the API proxy. Both staff sign-in and mutations require the exact configured frontend origin.
+
+Reuse the existing Supabase database and confirmed staff identities; do not import the old SQLite database. Source originals, roles and durable indexing jobs remain there. The API image runs as the nonroot campus user.
+
+Both services explicitly select the free tier for a demo. Each sleeps when idle, the indexing worker pauses while the API sleeps, and OCR cache files disappear on restart. First requests can be slow. OCR may exceed free-instance memory; paid always-on hosting requires a separate decision. Backups written inside the container must be exported off-server.
+
+After creation, check both Render deploys, backend `/api/health`, frontend `/api/health` through its proxy, sign-in, one source download, one grounded answer and indexing. If the API URL changes, rebuild the frontend; if the frontend URL changes, update backend `APP_ORIGIN`. A successful local Next.js build does not validate Render's remote Docker build.
+
+The earlier Vercel project is not used by this selected deployment. Its optional configuration remains in the repository; no Vercel project is deleted.
+
+References: [Render Next.js](https://render.com/docs/deploy-nextjs-app), [Blueprint configuration](https://render.com/docs/blueprint-spec), [free-service limits](https://render.com/docs/free).

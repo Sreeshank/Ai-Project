@@ -203,3 +203,8 @@ The staff workspace now shows observed provider availability (not just configure
 Use **Replace file** to upload a pending successor. The earlier approved file stays public until the successor is reviewed and approved, at which point all predecessors are archived atomically. Original identifiers remain distinct so old citations cannot silently point to new file contents. Earlier versions and original files remain accessible only through authenticated history tools. Saved metadata changes return active documents to pending review; archive state is preserved. **Versions & history** also exposes earlier extracted-text revisions.
 
 Migration `004_document_versions.sql` adds the private replacement relationships. For SQLite demos the table is created on initialization. Existing source data is preserved. See `deploy/README.md` for the backup/empty-target restore commands, request limits, structured error logs, Docker services and HTTPS reverse-proxy configuration. Deployment files are prepared; no server/domain has been provisioned and the Docker images have not been tested on this Windows machine. The current key now passes live generation/embedding checks; evaluation reports preserve earlier provider failures separately.
+
+
+## Hosting on Render
+
+The selected hosting configuration is `render.yaml`: a Next.js Node web service and a FastAPI Docker web service, both using Supabase. See `deploy/README.md` for secret configuration, frontend/backend URL wiring and free-tier limitations. Deployment still requires Render account access; committing this configuration alone does not create live services.
