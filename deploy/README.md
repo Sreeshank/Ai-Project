@@ -1,5 +1,7 @@
 # Deployment preparation
 
+**Current status:** the Render frontend and backend have been removed at the user's request. Run the app on localhost. The following files are retained for future use and do not represent an active deployment.
+
 The local application is configured against Supabase PostgreSQL. Staff sign-in uses Supabase Auth and private staff/admin roles; the shared token is no longer accepted. This folder prepares a single-server deployment and does not publish it or purchase hosting.
 
 ## Database and secrets
@@ -53,7 +55,7 @@ Run the Python suite and `npm run build`, then check the actual deployment domai
 References: [Next.js standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output), [Caddy reverse proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), [Supabase Auth users](https://supabase.com/docs/guides/auth/users), [Supabase server-side sessions](https://supabase.com/docs/guides/auth/server-side/advanced-guide), [Caddy log filters](https://caddyserver.com/docs/caddyfile/directives/log#filter).
 
 
-## Render frontend and backend (selected deployment)
+## Optional Render frontend and backend
 
 The root `render.yaml` creates two web services from the same GitHub repository:
 

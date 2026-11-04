@@ -2,9 +2,9 @@
 
 A campus information assistant with a Next.js/TypeScript frontend and a Python/FastAPI backend.
 
-[Open the live website](https://campus-compass-web.onrender.com)
+[Open locally](http://127.0.0.1:3000/)
 
-Hosted on Render. Free-tier services may take a moment to wake after inactivity.
+The app currently runs on localhost only. The Render frontend and backend deployments have been removed; documents and staff accounts remain in Supabase.
 
 ## What works now
 
@@ -209,6 +209,6 @@ Use **Replace file** to upload a pending successor. The earlier approved file st
 Migration `004_document_versions.sql` adds the private replacement relationships. For SQLite demos the table is created on initialization. Existing source data is preserved. See `deploy/README.md` for the backup/empty-target restore commands, request limits, structured error logs, Docker services and HTTPS reverse-proxy configuration. Deployment files are prepared; no server/domain has been provisioned and the Docker images have not been tested on this Windows machine. The current key now passes live generation/embedding checks; evaluation reports preserve earlier provider failures separately.
 
 
-## Hosting on Render
+## Optional deployment configuration
 
-The selected hosting configuration is `render.yaml`: a Next.js Node web service and a FastAPI Docker web service, both using Supabase. See `deploy/README.md` for secret configuration, frontend/backend URL wiring and free-tier limitations. Both services are deployed on Render. Open the live website linked above. Future deployments require access to the Render workspace.
+Deployment is disabled for now. `render.yaml` and the files in `deploy/` are retained for a possible future deployment; no Render services are currently running. Use the local startup instructions above. Supabase remains the document database and staff identity provider.
