@@ -2,6 +2,10 @@
 
 A campus information assistant with a Next.js/TypeScript frontend and a Python/FastAPI backend.
 
+[Open the live website](https://campus-compass-web.onrender.com)
+
+Hosted on Render. Free-tier services may take a moment to wake after inactivity.
+
 ## What works now
 
 - Student questions retrieve matching passages with document/page citations. Optional Gemini embeddings and pgvector add semantic search, combined with keyword results using reciprocal rank fusion.
@@ -207,4 +211,4 @@ Migration `004_document_versions.sql` adds the private replacement relationships
 
 ## Hosting on Render
 
-The selected hosting configuration is `render.yaml`: a Next.js Node web service and a FastAPI Docker web service, both using Supabase. See `deploy/README.md` for secret configuration, frontend/backend URL wiring and free-tier limitations. Deployment still requires Render account access; committing this configuration alone does not create live services.
+The selected hosting configuration is `render.yaml`: a Next.js Node web service and a FastAPI Docker web service, both using Supabase. See `deploy/README.md` for secret configuration, frontend/backend URL wiring and free-tier limitations. Both services are deployed on Render. Open the live website linked above. Future deployments require access to the Render workspace.
