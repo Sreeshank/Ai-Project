@@ -4,6 +4,10 @@ from functools import lru_cache
 from pathlib import Path
 from statistics import median, mean
 import io
+import csv
+import os
+import subprocess
+import sys
 import re
 import threading
 import unicodedata
@@ -24,6 +28,11 @@ class ExtractedPage:
         return asdict(self)
 
 
+class ExtractionBusy(Exception):
+    """Another document is being processed; callers should retry later."""
+
+
+_INGESTION_LOCK = threading.Lock()
 _OCR_LOCK = threading.Lock()
 _RENDER_LOCK = threading.Lock()
 MODELS = Path(__file__).resolve().parent / 'data' / 'ocr-models'
@@ -189,20 +198,64 @@ def refine_long_lines(image_bytes: bytes, records: list[dict]) -> list[dict]:
     return records
 
 
+def tesseract_records(image: bytes) -> list[dict]:
+    """Release OCR model memory when each bounded subprocess exits."""
+    command = ['tesseract', 'stdin', 'stdout', '-l', 'eng', '--psm', '3', 'tsv']
+    if sys.platform.startswith('linux'):
+        # A failed OCR allocation must fail this page, not kill the API container.
+        command = ['prlimit', '--as=268435456', '--', *command]
+    try:
+        result = subprocess.run(
+            command,
+            input=image, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=90, check=False, env={**os.environ, 'OMP_THREAD_LIMIT': '1'},
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        raise ValueError('OCR is unavailable or exceeded its processing time. Try a smaller scan or a text PDF.') from None
+    if result.returncode != 0:
+        raise ValueError('OCR could not process this scan. Try a clearer image or a text PDF.')
+    records = []
+    for row in csv.DictReader(io.StringIO(result.stdout.decode('utf-8', errors='replace')), delimiter='\t', quoting=csv.QUOTE_NONE):
+        try:
+            text = clean_text(row.get('text', ''))
+            score = float(row['conf']) / 100
+            if row['level'] != '5' or not text or score < 0:
+                continue
+            left, top, width, height = (int(row[key]) for key in ('left', 'top', 'width', 'height'))
+            if width <= 0 or height <= 0:
+                continue
+            records.append({'text': text, 'score': min(1.0, score),
+                'box': [[left,top],[left+width,top],[left+width,top+height],[left,top+height]]})
+        except (ValueError, KeyError, TypeError):
+            continue
+    return records
+
+
 def ocr_page(content: bytes, number: int) -> ExtractedPage:
-    image = render_pdf_page(content, number)
+    engine = os.getenv('OCR_ENGINE', 'rapidocr').lower()
+    if engine not in {'rapidocr', 'tesseract'}:
+        raise ValueError('OCR engine configuration is invalid.')
+    # Acquire before rendering so waiting callers cannot retain page bitmaps.
     with _OCR_LOCK:
-        result = ocr_engine()(image)
-        if result.txts is None or not len(result.txts):
-            raise ValueError('OCR could not recognize text on this page.')
-        records = [{'box': box.tolist(), 'text': text, 'score': float(score)} for box, text, score in zip(result.boxes, result.txts, result.scores)]
-        records = refine_long_lines(image, records)
+        image = render_pdf_page(content, number, max_side=1800 if engine == 'tesseract' else 2600)
+        if engine == 'tesseract':
+            records = tesseract_records(image)
+        else:
+            result = ocr_engine()(image)
+            if result.txts is None or not len(result.txts):
+                raise ValueError('OCR could not recognize text on this page.')
+            records = [{'box': box.tolist(), 'text': text, 'score': float(score)} for box, text, score in zip(result.boxes, result.txts, result.scores)]
+            records = refine_long_lines(image, records)
+    if not records:
+        raise ValueError('OCR could not recognize text on this page.')
     confidence = mean(item['score'] for item in records)
     warnings = ['OCR text needs comparison with the original, especially amounts, dates, names and eligibility rules.']
     uncertain = sum(item['score'] < 0.85 for item in records)
     if uncertain:
         warnings.append(f'{uncertain} text regions have low recognition scores. The score is not a guarantee of accuracy.')
     warnings.append('English OCR was used. Other scripts and handwriting may be inaccurate.')
+    if engine == 'tesseract':
+        warnings.append('Tesseract OCR was used in a memory-limited worker. Check table structure and reading order against the original.')
     return ExtractedPage(number, ocr_to_markdown(records), 'ocr', warnings, round(confidence, 4))
 
 
@@ -245,6 +298,15 @@ def extract_pdf(content: bytes, force_ocr: bool = False) -> list[ExtractedPage]:
 
 
 def extract_document(content: bytes, suffix: str, force_ocr: bool = False) -> tuple[list[ExtractedPage], bytes, str]:
+    if not _INGESTION_LOCK.acquire(blocking=False):
+        raise ExtractionBusy('Another document is being processed. Please wait and retry.')
+    try:
+        return _extract_document(content, suffix, force_ocr)
+    finally:
+        _INGESTION_LOCK.release()
+
+
+def _extract_document(content: bytes, suffix: str, force_ocr: bool = False) -> tuple[list[ExtractedPage], bytes, str]:
     if suffix == '.pdf':
         return extract_pdf(content, force_ocr), content, 'application/pdf'
     if suffix == '.docx':

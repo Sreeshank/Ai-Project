@@ -77,3 +77,12 @@ After creation, check both Render deploys, backend `/api/health`, frontend `/api
 The earlier Vercel project is not used by this selected deployment. Its optional configuration remains in the repository; no Vercel project is deleted.
 
 References: [Render Next.js](https://render.com/docs/deploy-nextjs-app), [Blueprint configuration](https://render.com/docs/blueprint-spec), [free-service limits](https://render.com/docs/free).
+
+
+## OCR memory on small instances
+
+The hosted Docker image uses `OCR_ENGINE=tesseract`. It renders one page at a time at up to 1800 pixels, runs English Tesseract in a short-lived process with one CPU thread, a 90-second timeout and (on Linux) a 256 MiB address-space limit, and releases that process after each page. It never falls back to in-process neural models if the worker fails. Local development still defaults to RapidOCR. OCR output remains pending and must be compared with the original before approval; engine changes can change text and table layout.
+
+Only one document extraction runs at a time per API process. Concurrent uploads or reprocessing receive 429 with `Retry-After: 5`, instead of holding several parsed documents in memory. This is an admission limit, not a persistent ingestion queue. A failed OCR page can use an existing PDF text layer only as an explicitly unreviewed `text-fallback`; unreadable scans return a clear error. Original PDF bytes are preserved.
+
+The Docker image build runs a real two-pass scanned-PDF OCR smoke test, checks the extracted amount, and measures the parent plus worker peak-memory upper bound against 384 MiB to leave headroom on a 512 MiB instance. This representative test is not a guarantee for every large or malformed document. The plan stays free; no compute upgrade is performed.

@@ -17,7 +17,7 @@ from fastapi.responses import Response, JSONResponse
 from starlette.concurrency import run_in_threadpool
 from backend import semantic, database, generation, runtime_status, operations, auth
 from backend.indexing import VectorIndexer, enqueue_all
-from backend.extraction import ExtractedPage, extract_document, render_pdf_page, search_chunks
+from backend.extraction import ExtractionBusy, ExtractedPage, extract_document, render_pdf_page, search_chunks
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parent
@@ -280,6 +280,8 @@ async def reprocess(identifier: str, request: ReprocessRequest):
     suffix = '.pdf' if document['media_type'] == 'application/pdf' else '.txt'
     try:
         pages, _, _ = await run_in_threadpool(extract_document, bytes(document['original']), suffix, request.force_ocr)
+    except ExtractionBusy as exc:
+        raise HTTPException(429, str(exc), headers={'Retry-After': '5'})
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     with connect() as db:
@@ -392,6 +394,8 @@ async def upload(file: UploadFile = File(...), title: str = Form(..., min_length
             raise HTTPException(422, 'Expiry must be YYYY-MM-DD.')
     try:
         pages, content, media_type = await run_in_threadpool(extract_document, content, suffix)
+    except ExtractionBusy as exc:
+        raise HTTPException(429, str(exc), headers={'Retry-After': '5'})
     except ValueError as exc:
         raise HTTPException(400, str(exc))
     except Exception:

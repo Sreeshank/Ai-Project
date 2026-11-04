@@ -10,6 +10,10 @@ services:
   dockerContext: .
   healthCheckPath: /api/health
   envVars:
+  - key: OCR_ENGINE
+    value: tesseract
+  - key: OMP_THREAD_LIMIT
+    value: '1'
   - key: DOCUMENT_BACKEND
     value: postgres
   - key: DATABASE_URL

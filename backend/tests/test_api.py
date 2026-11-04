@@ -243,6 +243,15 @@ class CampusAPITest(unittest.TestCase):
         self.assertEqual(answer['sources'][0]['page'], 2)
         self.assertTrue(answer['sources'][0]['url'].endswith('#page=2'))
 
+    def test_busy_extraction_returns_retryable_error_without_partial_upload(self):
+        with main.connect() as db:
+            before=db.execute('SELECT count(*) FROM documents').fetchone()[0]
+        with patch.object(main,'extract_document',side_effect=main.ExtractionBusy('Another document is being processed.')):
+            response=self.client.post('/api/admin/documents',headers=self.auth,data={'title':'Queued document'},files={'file':('policy.txt',b'Library rules','text/plain')})
+        self.assertEqual(response.status_code,429)
+        self.assertEqual(response.headers.get('Retry-After'),'5')
+        with main.connect() as db:self.assertEqual(db.execute('SELECT count(*) FROM documents').fetchone()[0],before)
+
     def test_gemini_valid_and_invalid_citation_responses(self):
         import json
         for citation, expected_mode in [('[1]', 'gemini'), ('[99]', 'extractive-fallback')]:
